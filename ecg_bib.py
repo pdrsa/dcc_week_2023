@@ -8,6 +8,7 @@ import h5py
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+from sklearn.metrics import classification_report
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -117,3 +118,18 @@ def train(model, train_loader, val_loader, optimizer, criterion, num_epochs, mod
         torch.save(model.state_dict(), f"{model_path}/last_model.pth")
 
     print("Finished training!")
+
+# Avaliação Genérica
+def evaluate(model, dataloader, device):
+    model.eval()
+    y_true = []
+    y_pred = []
+    with torch.no_grad():
+        for inputs, labels in tqdm(dataloader):
+            inputs = inputs.to(device)
+            labels = labels.to(device)
+            outputs = model(inputs)
+            _, preds = torch.max(outputs, 1)
+            y_true += labels.cpu().numpy().tolist()
+            y_pred += preds.cpu().numpy().tolist()
+    return classification_report(y_true, y_pred, digits=4)
