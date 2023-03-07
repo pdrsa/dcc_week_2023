@@ -77,8 +77,12 @@ class ECG_CNN_Classifier(nn.Module):
 
 # Código geral de treinamento :)
 # Em teoria, é só trocar o modelo que isso aqui deveria fazer a mágica acontecer
-def train(model, train_loader, val_loader, optimizer, criterion, num_epochs, model_path):
-    best_val_loss = float('inf')  # inicializa com um valor muito alto
+def train(model, train_loader, val_loader, optimizer, criterion, num_epochs, model_path, patience):
+    print("Training!\nEpochs:",num_epochs,"\nPatience:", patience,"\n")
+    
+    best_val_loss = float('inf')
+    epochs_since_last_improvement = 0
+
     for epoch in range(num_epochs):
         print("\nStarting epoch", epoch+1, "----------\n")
         # TREINAMENTO
@@ -113,6 +117,14 @@ def train(model, train_loader, val_loader, optimizer, criterion, num_epochs, mod
         if val_loss < best_val_loss:
             torch.save(model.state_dict(), f"{model_path}/best_model.pth")
             best_val_loss = val_loss
+            epochs_since_last_improvement = 0
+        else:
+            epochs_since_last_improvement += 1
+        
+        # verifica se deve parar o treinamento
+        if epochs_since_last_improvement >= patience:
+            print(f"No improvement for {patience} epochs. Stopping training.")
+            break
         
         # salva o último modelo treinado
         torch.save(model.state_dict(), f"{model_path}/last_model.pth")
