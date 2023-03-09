@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from sklearn.metrics import classification_report
+import os
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -51,12 +52,15 @@ class ECG_CNN_Classifier(nn.Module):
         self.conv1 = nn.Conv1d(in_channels=12, out_channels=32, kernel_size=5, padding=2)
         self.bn1 = nn.BatchNorm1d(num_features=32)
         self.pool1 = nn.MaxPool1d(kernel_size=2)
+        self.drop1 = nn.Dropout(p=0.5)
         self.conv2 = nn.Conv1d(in_channels=32, out_channels=64, kernel_size=5, padding=2)
         self.bn2 = nn.BatchNorm1d(num_features=64)
         self.pool2 = nn.MaxPool1d(kernel_size=2)
+        self.drop2 = nn.Dropout(p=0.5)
         self.conv3 = nn.Conv1d(in_channels=64, out_channels=128, kernel_size=5, padding=2)
         self.bn3 = nn.BatchNorm1d(num_features=128)
         self.pool3 = nn.MaxPool1d(kernel_size=2)
+        self.drop3 = nn.Dropout(p=0.5)
         self.fc1 = nn.Linear(128*512, 256)
         self.fc2 = nn.Linear(256, num_classes)
 
@@ -64,12 +68,15 @@ class ECG_CNN_Classifier(nn.Module):
         x = self.conv1(x)
         x = F.relu(self.bn1(x))
         x = self.pool1(x)
+        x = self.drop1(x)
         x = self.conv2(x)
         x = F.relu(self.bn2(x))
         x = self.pool2(x)
+        x = self.drop2(x)
         x = self.conv3(x)
         x = F.relu(self.bn3(x))
         x = self.pool3(x)
+        x = self.drop3(x)
         x = x.view(x.size(0), -1)
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
@@ -78,7 +85,8 @@ class ECG_CNN_Classifier(nn.Module):
 # Código geral de treinamento :)
 # Em teoria, é só trocar o modelo que isso aqui deveria fazer a mágica acontecer
 def train(model, train_loader, val_loader, optimizer, criterion, num_epochs, model_path, patience):
-    print("Training!\nEpochs:",num_epochs,"\nPatience:", patience,"\n")
+    os.makedirs(model_path, exist_ok=True)
+    print("Training!\nEpochs:",num_epochs,"\nPatience:", patience,"\nSaving to:", model_path,"\n")
     
     best_val_loss = float('inf')
     epochs_since_last_improvement = 0
@@ -144,4 +152,21 @@ def evaluate(model, dataloader, device):
             _, preds = torch.max(outputs, 1)
             y_true += labels.cpu().numpy().tolist()
             y_pred += preds.cpu().numpy().tolist()
+    return classification_report(y_true, y_pred, digits=4)
+
+# Avaliação Binária
+def evaluate_binary(model, dataloader, device):
+    model.eval()
+    y_true = []
+    y_pred = []
+    with torch.no_grad():
+        for inputs, labels in tqdm(dataloader):
+            inputs = inputs.to(device)
+            labels = labels.to(device)
+            outputs = model(inputs)
+            _, preds = torch.max(outputs, 1)
+            y_true += labels.cpu().numpy().tolist()
+            y_pred += preds.cpu().numpy().tolist()
+    y_true = [min(x, 1) for x in y_true]
+    y_pred = [min(x, 1) for x in y_pred]
     return classification_report(y_true, y_pred, digits=4)

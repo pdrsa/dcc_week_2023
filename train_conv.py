@@ -29,4 +29,4 @@ criterion = nn.CrossEntropyLoss()
 
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-train(model, train_loader, val_loader, optimizer, criterion, 20, "models/ECG_CNN_Classifier")
+train(model, train_loader, val_loader, optimizer, criterion, 20, "models/ECG_CNN_Classifier_1.1", 3)

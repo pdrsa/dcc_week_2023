@@ -20,7 +20,7 @@ class ECG_Dataset(Dataset):
         self.f = h5py.File(tracings_file_path, 'r')
 
         # Get tracings
-        self.trace_ids = np.array(self.f['exam_id'])[start:end]
+        self.trace_ids = np.array(self.f['exam_id'])
         self.tracings = self.f['tracings']
 
         # Defining start and end
@@ -31,16 +31,31 @@ class ECG_Dataset(Dataset):
         labels_df = pd.read_csv(labels_file_path)
         self.labels    = {labels_df["exam_id"][i]:labels_df["classe"][i] for i in range(len(self.tracings))}
 
+        self.indexes = []
+
+        count = [0, 0]
+        # Balancing dataset
+        for i in range(self.start, self.end):
+            c = self.get_label(i)
+            if(c == 0 and count[0] - count[1] > count[0]/2): continue
+            self.indexes.append(i)
+            count[c] += 1
+
+
+    def get_label(self, idx):
+        return min(self.labels[self.trace_ids[idx]], 1)
+
     def __len__(self):
-        return self.end - self.start
+        return len(self.indexes)
 
     def __getitem__(self, idx):
+        idx = self.indexes[idx]
+
         # Get tracing
-        tracing_idx = self.start + idx
-        tracing = np.transpose(self.tracings[tracing_idx])
+        tracing = np.transpose(self.tracings[idx])
         
         # Get label
-        label = min(self.labels[self.trace_ids[idx]], 1) # That's the only change
+        label = self.get_label(idx)
 
         return tracing, label
 
